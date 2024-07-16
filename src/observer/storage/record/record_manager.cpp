@@ -496,11 +496,21 @@ RC PaxRecordPageHandler::get_record(const RID &rid, Record &record)
     LOG_ERROR("Invalid slot_num:%d, slot is empty, page_num %d.", rid.slot_num, frame_->page_num());
     return RC::RECORD_NOT_EXIST;
   }
-
   record.set_rid(rid);
+  int len=0;
+  //record.set_data_owner(record.data(), page_header_->record_real_size);
+  char* data;
+  data = (char*)malloc(page_header_->record_real_size);
+  record.set_data_owner(data, page_header_->record_real_size);
   for(int i=0;i<page_header_->column_num;i++){
-    record.set_data(get_field_data(rid.slot_num, i), get_field_len(i));
+    record.set_field(len, get_field_len(i), get_field_data(rid.slot_num, i));
+    len+=get_field_len(i);
   }
+  // char *data = record.data();
+  // for(int i=0;i<page_header_->column_num;i++){
+  //   memcpy(data + len, get_field_data(rid.slot_num, i), get_field_len(i));
+  //   len+=get_field_len(i);
+  // }
   return RC::SUCCESS;
 }
 
@@ -509,25 +519,14 @@ RC PaxRecordPageHandler::get_chunk(Chunk &chunk)
 {
   // your code here
 
-  Record record;
-  RecordPageIterator record_page_iterator;
-  record_page_iterator.init(this);
-  if (!record_page_iterator.has_next()) {
-    return RC::RECORD_EOF;
-  }
-
-  record_page_iterator.next(record);
-  for(int i=0;i<page_header_->column_num;i++){
-    chunk.add_column(unique_ptr<Column>(new Column()), i);
-  }
-  for(int i=0;i<page_header_->record_num;i++){
-    for(int j=0;j<page_header_->column_num;j++){
-      chunk.column(j).append(get_field_data(i, j), get_field_len(j));
+  Bitmap bitmap(bitmap_, page_header_->record_capacity);
+  //for(int i=0;i<page_header_->record_num;i++){
+  for(int i=0;i<page_header_->record_capacity;i++){
+    if(bitmap.get_bit(i)){
+      for(int j=0;j<chunk.column_num();j++){
+        chunk.column(j).append(get_field_data(i, chunk.column_ids(j)), 1);
+      }
     }
-    if (!record_page_iterator.has_next()) {
-      break;
-    }
-    record_page_iterator.next(record);
   }
   return RC::SUCCESS;
 }
