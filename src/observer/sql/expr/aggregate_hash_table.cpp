@@ -15,6 +15,7 @@ See the Mulan PSL v2 for more details. */
 RC StandardAggregateHashTable::add_chunk(Chunk &groups_chunk, Chunk &aggrs_chunk)
 {
   // your code here
+  
   exit(-1);
 }
 
