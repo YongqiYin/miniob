@@ -32,4 +32,10 @@ public:
   RC close() override { return RC::UNIMPLENMENT; }
 
 private:
+  std::vector<std::unique_ptr<Expression>> group_by_exprs_;
+  std::unique_ptr<StandardAggregateHashTable> hash_table_;
+  std::vector<Expression *> aggregate_expressions_;  
+  std::vector<Expression *> value_expressions_;    
+  Chunk chunk_;
+  bool flag;
 };

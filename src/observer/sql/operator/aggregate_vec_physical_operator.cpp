@@ -87,6 +87,7 @@ RC AggregateVecPhysicalOperator::open(Trx *trx)
   if (rc == RC::RECORD_EOF) {
     rc = RC::SUCCESS;
   }
+  flag=false;
 
   return rc;
 }
@@ -101,12 +102,34 @@ void AggregateVecPhysicalOperator::update_aggregate_state(void *state, const Col
 RC AggregateVecPhysicalOperator::next(Chunk &chunk)
 {
   // your code here
-  exit(-1);
+  //exit(-1);
+    if (flag) {
+    return RC::RECORD_EOF;
+  }
+  for (size_t aggr_idx = 0; aggr_idx < aggregate_expressions_.size(); aggr_idx++) {
+    ASSERT(aggregate_expressions_[aggr_idx]->type() == ExprType::AGGREGATION, "expect aggregate expression");
+    auto *aggregate_expr = static_cast<AggregateExpr *>(aggregate_expressions_[aggr_idx]);
+    if (aggregate_expr->aggregate_type() == AggregateExpr::Type::SUM) {
+      if (aggregate_expr->value_type() == AttrType::INTS) {
+        output_chunk_.column_ptr(aggr_idx)->append_one((char *)aggr_values_.at(aggr_idx));
+      } else if (aggregate_expr->value_type() == AttrType::FLOATS) {
+        output_chunk_.column_ptr(aggr_idx)->append_one((char *)aggr_values_.at(aggr_idx));
+      } else {
+        ASSERT(false, "No support data type.");
+      }
+    } else {
+      ASSERT(false, "No support aggregation type.");
+    }
+  }
+  chunk.reference(output_chunk_);
+  flag = true;
+  return RC::SUCCESS;
 }
 
 RC AggregateVecPhysicalOperator::close()
 {
   children_[0]->close();
   LOG_INFO("close group by operator");
+  flag=false;
   return RC::SUCCESS;
 }
